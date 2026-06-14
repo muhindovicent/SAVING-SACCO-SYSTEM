@@ -15,6 +15,16 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SecurityModule } from './modules/security/security.module';
 import { GovernanceModule } from './modules/governance/governance.module';
+import { UsersModule } from './modules/users/users.module';
+import { ContributionsModule } from './modules/contributions/contributions.module';
+import { RepaymentsModule } from './modules/repayments/repayments.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { PenaltiesModule } from './modules/penalties/penalties.module';
+import { MeetingsModule } from './modules/meetings/meetings.module';
+import { VotingModule } from './modules/voting/voting.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PrismaModule } from './infrastructure/database/prisma.module';
 import { CacheModule } from './infrastructure/cache/cache.module';
 import { QueueModule } from './infrastructure/queue/queue.module';
@@ -45,6 +55,16 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     NotificationsModule,
     SecurityModule,
     GovernanceModule,
+    UsersModule,
+    ContributionsModule,
+    RepaymentsModule,
+    PaymentsModule,
+    PenaltiesModule,
+    MeetingsModule,
+    VotingModule,
+    DocumentsModule,
+    SettingsModule,
+    DashboardModule,
   ],
   providers: [
     {

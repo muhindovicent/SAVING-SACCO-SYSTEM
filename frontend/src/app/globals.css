@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #B6E62E;
+  --primary-dark: #9DCB1F;
+  --dark-bg: #0A1404;
+  --card-bg: #16220D;
+  --surface: #1E2D12;
+  --muted: #2A3D18;
+  --text: #E8F5E9;
+  --text-muted: #8DA88D;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--dark-bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--dark-bg); }
+::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+
+/* Glass card */
+.glass {
+  background: rgba(22, 34, 13, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(182, 230, 46, 0.1);
+  border-radius: 16px;
+}
+
+/* Glow effect */
+.glow { box-shadow: 0 0 20px rgba(182, 230, 46, 0.15); }
+.glow-text { text-shadow: 0 0 20px rgba(182, 230, 46, 0.5); }
+
+/* Badge colors */
+.badge-green { background: rgba(182, 230, 46, 0.15); color: #B6E62E; }
+.badge-blue { background: rgba(59, 130, 246, 0.15); color: #60A5FA; }
+.badge-red { background: rgba(239, 68, 68, 0.15); color: #F87171; }
+.badge-yellow { background: rgba(234, 179, 8, 0.15); color: #FBBF24; }

@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "buildCommand": null,
-  "framework": null,
+  "rootDirectory": "frontend",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
   "cleanUrls": true
 }

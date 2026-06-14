@@ -1,12 +1,18 @@
 node_modules/
-client/node_modules/
-server/node_modules/
-backend/node_modules/
 .env
 *.log
 .DS_Store
 Thumbs.db
-postgresql-17-extracted/
+postgresql-*
 postgres_data/
-postgresql-*.zip
 ChatGPT Image *.png
+.next/
+dist/
+build/
+*.tsbuildinfo
+client/
+server/
+index.html
+logo.png
+package.json
+package-lock.json

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: jenga-wealth-db
+    environment:
+      POSTGRES_DB: jenga_wealth
+      POSTGRES_USER: sacco_user
+      POSTGRES_PASSWORD: Sacco@2024!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sacco_user -d jenga_wealth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: jenga-wealth-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: jenga-wealth-queue
+    environment:
+      RABBITMQ_DEFAULT_USER: sacco
+      RABBITMQ_DEFAULT_PASS: Sacco@2024!
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  postgres_data:
