@@ -12,7 +12,7 @@ build/
 *.tsbuildinfo
 client/
 server/
-index.html
-logo.png
-package.json
-package-lock.json
+/index.html
+/logo.png
+/package.json
+/package-lock.json
