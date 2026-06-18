@@ -1,8 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { login } from '@/services/auth'
 import { useAuthStore } from '@/store/auth'
+import { seedDemoData } from '@/lib/seed'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,6 +12,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => { seedDemoData() }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,6 +30,7 @@ export default function LoginPage() {
       const roleRoutes: Record<string, string> = {
         admin: '/admin/dashboard',
         treasurer: '/treasurer/dashboard',
+        loan_officer: '/loan-officer/dashboard',
         member: '/member/dashboard',
       }
       router.push(roleRoutes[session.role] || '/member/dashboard')
@@ -85,6 +89,7 @@ export default function LoginPage() {
         <p className="text-xs text-[#8DA88D]">Demo Credentials</p>
         <p className="text-xs text-[#8DA88D]">admin@jengawealth.com / Admin@123</p>
         <p className="text-xs text-[#8DA88D]">treasurer@jengawealth.com / Admin@123</p>
+        <p className="text-xs text-[#8DA88D]">loanofficer@jengawealth.com / Admin@123</p>
         <p className="text-xs text-[#8DA88D]">john@jengawealth.com / Member@123</p>
       </div>
     </div>

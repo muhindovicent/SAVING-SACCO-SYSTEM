@@ -23,6 +23,12 @@ export const NAV_ITEMS = {
     { label: 'Contributions', icon: 'HandCoins', href: '/treasurer/contributions' },
     { label: 'Reports', icon: 'BarChart3', href: '/treasurer/reports' },
   ],
+  loan_officer: [
+    { label: 'Dashboard', icon: 'LayoutDashboard', href: '/loan-officer/dashboard' },
+    { label: 'Applications', icon: 'ClipboardList', href: '/loan-officer/applications' },
+    { label: 'Active Loans', icon: 'Landmark', href: '/loan-officer/active-loans' },
+    { label: 'Reports', icon: 'BarChart3', href: '/loan-officer/reports' },
+  ],
   member: [
     { label: 'Dashboard', icon: 'LayoutDashboard', href: '/member/dashboard' },
     { label: 'Savings', icon: 'Wallet', href: '/member/savings' },

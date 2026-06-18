@@ -5,9 +5,19 @@ import type { User } from '@/lib/types'
 export interface AuthSession {
   userId: string
   email: string
-  role: 'admin' | 'treasurer' | 'member'
+  role: 'admin' | 'treasurer' | 'loan_officer' | 'member'
   name: string
   memberNo?: string
+}
+
+function setCookie(name: string, value: any, days = 7) {
+  const date = new Date()
+  date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))};expires=${date.toUTCString()};path=/`
+}
+
+function removeCookie(name: string) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
 }
 
 export function login(email: string, password: string): AuthSession | null {
@@ -22,11 +32,13 @@ export function login(email: string, password: string): AuthSession | null {
     memberNo: user.memberNo,
   }
   DB.set('auth_user', session)
+  setCookie(AUTH_KEY, session)
   return session
 }
 
 export function logout(): void {
   DB.remove('auth_user')
+  removeCookie(AUTH_KEY)
 }
 
 export function getSession(): AuthSession | null {
