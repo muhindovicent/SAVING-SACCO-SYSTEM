@@ -88,101 +88,63 @@ export const authApi = {
     }),
 }
 
-// ── Loan Products API ──
+// ── Members API ──
 
-export const loanProductApi = {
-  list: (all?: boolean) =>
-    request<any[]>(all ? '/loans/products/all' : '/loans/products'),
+export const membersApi = {
+  list: (params?: { page?: number; limit?: number; search?: string }) =>
+    request<any>('/members', { params }),
   get: (id: string) =>
-    request<any>(`/loans/products/${id}`),
-  create: (data: any) =>
-    request<any>('/loans/products', { method: 'POST', body: data }),
-  update: (id: string, data: any) =>
-    request<any>(`/loans/products/${id}`, { method: 'PATCH', body: data }),
-  toggle: (id: string) =>
-    request<any>(`/loans/products/${id}/toggle`, { method: 'PATCH' }),
+    request<any>(`/members/${id}`),
+  create: (data: {
+    memberNo: string
+    firstName: string
+    lastName: string
+    phone?: string
+    email?: string
+    idNumber?: string
+    monthlyIncome?: number
+    status?: string
+  }) =>
+    request<any>('/members', { method: 'POST', body: data }),
 }
 
-// ── Calculation API ──
+// ── Savings API ──
 
-export const calculationApi = {
-  calculate: (data: { principal: number; interestRate: number; durationMonths: number; interestMethod?: string; processingFee?: number }) =>
-    request<any>('/loans/calculate', { method: 'POST', body: data }),
-  getMethods: () =>
-    request<string[]>('/loans/interest-methods'),
+export const savingsApi = {
+  list: (params?: { page?: number; limit?: number; memberId?: string; status?: string }) =>
+    request<any>('/savings', { params }),
+  deposit: (data: { accountId: string; amount: number; reference?: string; description?: string }) =>
+    request<any>('/savings/deposit', { method: 'POST', body: data }),
+  withdraw: (data: { accountId: string; amount: number; reference?: string; description?: string }) =>
+    request<any>('/savings/withdraw', { method: 'POST', body: data }),
+  transactions: (params?: { page?: number; limit?: number; accountId?: string; type?: string }) =>
+    request<any>('/savings/transactions', { params }),
 }
 
-// ── Loan Applications API ──
+// ── Loans API ──
 
-export const loanApplicationApi = {
-  apply: (data: { productId: string; principal: number; purpose?: string; repaymentPeriod?: number }) =>
+export const loansApi = {
+  list: (params?: { page?: number; limit?: number; memberId?: string; status?: string }) =>
+    request<any>('/loans', { params }),
+  apply: (data: { loanType: string; amount: number; purpose?: string; durationMonths: number }) =>
     request<any>('/loans/apply', { method: 'POST', body: data }),
-  list: (params?: { memberId?: string; status?: string }) =>
-    request<any[]>('/loans/applications', { params }),
-  pending: (page?: number, limit?: number) =>
-    request<any>('/loans/pending', { params: { page, limit } }),
-  all: (page?: number, limit?: number) =>
-    request<any>('/loans/all', { params: { page, limit } }),
-}
-
-// ── Loan Management API ──
-
-export const loanApi = {
-  approve: (id: string) =>
-    request<any>(`/loans/${id}/approve`, { method: 'PATCH' }),
+  approve: (id: string, data?: { interestRate?: number }) =>
+    request<any>(`/loans/${id}/approve`, { method: 'PATCH', body: data || {} }),
   reject: (id: string, reason: string) =>
     request<any>(`/loans/${id}/reject`, { method: 'PATCH', body: { reason } }),
   disburse: (id: string) =>
     request<any>(`/loans/${id}/disburse`, { method: 'POST' }),
   repay: (id: string, data: { amount: number; paymentMethod?: string; reference?: string; notes?: string }) =>
     request<any>(`/loans/${id}/repay`, { method: 'POST', body: data }),
-  earlyRepayment: (id: string, amount: number) =>
-    request<any>(`/loans/${id}/early-repayment`, { method: 'POST', body: { amount } }),
   getSchedule: (id: string) =>
     request<any[]>(`/loans/${id}/schedule`),
-  activeLoans: (page?: number, limit?: number) =>
-    request<any>('/loans/active', { params: { page, limit } }),
-  overdueLoans: (page?: number, limit?: number) =>
-    request<any>('/loans/overdue', { params: { page, limit } }),
 }
 
-// ── Penalty API ──
+// ── Reports API ──
 
-export const penaltyApi = {
-  list: (loanId?: string) =>
-    request<any[]>('/loans/penalties', { params: { loanId } }),
-  waive: (id: string) =>
-    request<any>(`/loans/penalties/${id}/waive`, { method: 'POST' }),
-  calculate: () =>
-    request<any>('/loans/calculate-penalties', { method: 'POST' }),
-}
-
-// ── Statistics API ──
-
-export const statisticsApi = {
+export const reportsApi = {
   overview: () =>
-    request<any>('/loans/overview'),
-  statistics: () =>
-    request<any>('/loans/statistics'),
-  officerStatistics: () =>
-    request<any>('/loans/officer-statistics'),
-  memberStatistics: () =>
-    request<any>('/loans/member-statistics'),
-}
-
-// ── Report API ──
-
-export const reportApi = {
-  portfolio: (format?: string) =>
-    request<any>('/loans/reports/portfolio', { params: { format } }),
-  interestRevenue: (format?: string) =>
-    request<any>('/loans/reports/interest-revenue', { params: { format } }),
-  outstanding: (format?: string) =>
-    request<any>('/loans/reports/outstanding', { params: { format } }),
-  overdue: (format?: string) =>
-    request<any>('/loans/reports/overdue', { params: { format } }),
-  productPerformance: (format?: string) =>
-    request<any>('/loans/reports/product-performance', { params: { format } }),
-  recovery: (format?: string) =>
-    request<any>('/loans/reports/recovery', { params: { format } }),
+    request<any>('/reports/overview'),
+  outstanding: () =>
+    request<any>('/reports/outstanding'),
 }
