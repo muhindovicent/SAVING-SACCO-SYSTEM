@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { login } from '@/services/auth'
+import { login, loginWithApi } from '@/services/auth'
 import { useAuthStore } from '@/store/auth'
 import { seedDemoData } from '@/lib/seed'
 
@@ -20,7 +20,10 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const session = login(email, password)
+      let session = await loginWithApi(email, password)
+      if (!session) {
+        session = login(email, password)
+      }
       if (!session) {
         setError('Invalid email or password')
         setLoading(false)
@@ -52,13 +55,13 @@ export default function LoginPage() {
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm text-[#8DA88D] mb-1">Email</label>
+          <label className="block text-sm text-[#8DA88D] mb-1">Email or Username</label>
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={e => setEmail(e.target.value)}
             className="w-full bg-[#1E2D12] border border-[#2A3D18] rounded-lg px-4 py-3 text-[#E8F5E9] placeholder-[#8DA88D] focus:outline-none focus:border-[#B6E62E] focus:ring-1 focus:ring-[#B6E62E] transition"
-            placeholder="you@example.com"
+            placeholder="admin or you@example.com"
             required
           />
         </div>
@@ -87,10 +90,10 @@ export default function LoginPage() {
       </form>
       <div className="mt-6 text-center space-y-1">
         <p className="text-xs text-[#8DA88D]">Demo Credentials</p>
-        <p className="text-xs text-[#8DA88D]">admin@jengawealth.com / Admin@123</p>
-        <p className="text-xs text-[#8DA88D]">treasurer@jengawealth.com / Admin@123</p>
-        <p className="text-xs text-[#8DA88D]">loanofficer@jengawealth.com / Admin@123</p>
-        <p className="text-xs text-[#8DA88D]">john@jengawealth.com / Member@123</p>
+        <p className="text-xs text-[#8DA88D]">admin / Admin@123</p>
+        <p className="text-xs text-[#8DA88D]">treasurer / Admin@123</p>
+        <p className="text-xs text-[#8DA88D]">loanofficer / Admin@123</p>
+        <p className="text-xs text-[#8DA88D]">john / Member@123</p>
       </div>
     </div>
   )

@@ -42,25 +42,23 @@ async function request<T = any>(path: string, options: RequestOptions = {}): Pro
     body: body ? JSON.stringify(body) : undefined,
   })
 
+  const json = await res.json()
+
   if (!res.ok) {
-    let errorMsg = `HTTP ${res.status}`
-    try {
-      const err = await res.json()
-      errorMsg = err.message || err.error || errorMsg
-    } catch { /* ignore */ }
+    const errorMsg = json.error || json.message || `HTTP ${res.status}`
     throw new Error(errorMsg)
   }
 
-  return res.json()
+  return json.data !== undefined ? json.data : json
 }
 
 // ── Auth API ──
 
 export const authApi = {
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     request<{ accessToken: string; refreshToken: string; user: any }>('/auth/login', {
       method: 'POST',
-      body: { email, password },
+      body: { username, password },
     }),
   refresh: (refreshToken: string) =>
     request<{ accessToken: string }>('/auth/refresh', {
