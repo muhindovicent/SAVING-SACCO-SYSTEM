@@ -14,7 +14,12 @@
     "react-dom": "^18.3.0",
     "lucide-react": "^0.400.0",
     "zustand": "^4.5.0",
-    "date-fns": "^3.6.0"
+    "date-fns": "^3.6.0",
+    "pg": "^8.11.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.0",
+    "cookie": "^0.6.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.0",

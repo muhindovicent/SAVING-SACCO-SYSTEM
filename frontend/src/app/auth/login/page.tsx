@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { login, loginWithApi } from '@/services/auth'
+import { loginWithApi } from '@/services/auth'
 import { useAuthStore } from '@/store/auth'
 import { seedDemoData } from '@/lib/seed'
 
@@ -20,10 +20,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      let session = await loginWithApi(email, password)
-      if (!session) {
-        session = login(email, password)
-      }
+      const session = await loginWithApi(email, password)
       if (!session) {
         setError('Invalid email or password')
         setLoading(false)
@@ -89,11 +86,7 @@ export default function LoginPage() {
         </button>
       </form>
       <div className="mt-6 text-center space-y-1">
-        <p className="text-xs text-[#8DA88D]">Demo Credentials</p>
-        <p className="text-xs text-[#8DA88D]">admin / Admin@123</p>
-        <p className="text-xs text-[#8DA88D]">treasurer / Admin@123</p>
-        <p className="text-xs text-[#8DA88D]">loanofficer / Admin@123</p>
-        <p className="text-xs text-[#8DA88D]">john / Member@123</p>
+        <p className="text-xs text-[#8DA88D]">Contact your SACCO administrator for login credentials.</p>
       </div>
     </div>
   )

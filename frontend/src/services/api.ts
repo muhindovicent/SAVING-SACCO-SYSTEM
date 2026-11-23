@@ -1,4 +1,4 @@
-const API_BASE = '/api/v1'
+const API_BASE = '/api'
 
 interface RequestOptions {
   method?: string
@@ -7,14 +7,6 @@ interface RequestOptions {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {}
-  const token = localStorage.getItem('sacco_token')
-  if (token) {
-    try {
-      const parsed = JSON.parse(token)
-      if (parsed.accessToken) return { Authorization: `Bearer ${parsed.accessToken}` }
-    } catch { /* ignore */ }
-  }
   return {}
 }
 
@@ -42,7 +34,15 @@ async function request<T = any>(path: string, options: RequestOptions = {}): Pro
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const json = await res.json()
+  if (res.status === 401) {
+    throw new Error('Unauthorized')
+  }
+
+  if (res.status === 403) {
+    throw new Error('Forbidden')
+  }
+
+  const json = await res.json().catch(() => ({}))
 
   if (!res.ok) {
     const errorMsg = json.error || json.message || `HTTP ${res.status}`
@@ -55,15 +55,36 @@ async function request<T = any>(path: string, options: RequestOptions = {}): Pro
 // ── Auth API ──
 
 export const authApi = {
-  login: (username: string, password: string) =>
-    request<{ accessToken: string; refreshToken: string; user: any }>('/auth/login', {
+  login: (email: string, password: string) =>
+    request<{ user: { id: string; email: string; role: string } }>('/auth/login', {
       method: 'POST',
-      body: { username, password },
+      body: { email, password },
     }),
-  refresh: (refreshToken: string) =>
-    request<{ accessToken: string }>('/auth/refresh', {
+  register: (data: {
+    email: string
+    password: string
+    role: string
+    firstName?: string
+    lastName?: string
+    phone?: string
+    idNumber?: string
+    memberNo?: string
+  }) =>
+    request<{ userId: string; memberId?: string }>('/auth/register', {
       method: 'POST',
-      body: { refreshToken },
+      body: data,
+    }),
+  logout: () =>
+    request<{ message: string }>('/auth/logout', {
+      method: 'POST',
+    }),
+  me: () =>
+    request<{ user: { id: string; email: string; role: string; isActive: boolean; lastLogin?: string } }>('/auth/me', {
+      method: 'GET',
+    }),
+  refresh: () =>
+    request<{ message: string }>('/auth/refresh', {
+      method: 'POST',
     }),
 }
 
