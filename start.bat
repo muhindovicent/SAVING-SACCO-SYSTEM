@@ -8,11 +8,7 @@ echo.
 echo Opening application in your browser...
 echo.
 echo Demo Credentials:
-echo   Admin:        admin@jengawealth.com / Admin@123
-echo   Treasurer:    treasurer@jengawealth.com / Admin@123
-echo   Loan Officer: loanofficer@jengawealth.com / Admin@123
-echo   Auditor:      auditor@jengawealth.com / Auditor@123
-echo   Member:       john@jengawealth.com / Member@123
+echo   Contact your SACCO administrator for login credentials.
 echo.
 echo =============================================
 start "" "%~dp0sacco.html"
