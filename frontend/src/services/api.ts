@@ -113,9 +113,9 @@ export const membersApi = {
 export const savingsApi = {
   list: (params?: { page?: number; limit?: number; memberId?: string; status?: string }) =>
     request<any>('/savings', { params }),
-  deposit: (data: { accountId: string; amount: number; reference?: string; description?: string }) =>
+  deposit: (data: { accountId: string; amount: number; reference?: string; description?: string; idempotencyKey?: string }) =>
     request<any>('/savings/deposit', { method: 'POST', body: data }),
-  withdraw: (data: { accountId: string; amount: number; reference?: string; description?: string }) =>
+  withdraw: (data: { accountId: string; amount: number; reference?: string; description?: string; idempotencyKey?: string }) =>
     request<any>('/savings/withdraw', { method: 'POST', body: data }),
   transactions: (params?: { page?: number; limit?: number; accountId?: string; type?: string }) =>
     request<any>('/savings/transactions', { params }),
@@ -126,15 +126,15 @@ export const savingsApi = {
 export const loansApi = {
   list: (params?: { page?: number; limit?: number; memberId?: string; status?: string }) =>
     request<any>('/loans', { params }),
-  apply: (data: { loanType: string; amount: number; purpose?: string; durationMonths: number }) =>
+  apply: (data: { loanType: string; amount: number; purpose?: string; durationMonths: number; idempotencyKey?: string }) =>
     request<any>('/loans/apply', { method: 'POST', body: data }),
-  approve: (id: string, data?: { interestRate?: number }) =>
+  approve: (id: string, data?: { interestRate?: number; idempotencyKey?: string }) =>
     request<any>(`/loans/${id}/approve`, { method: 'PATCH', body: data || {} }),
   reject: (id: string, reason: string) =>
     request<any>(`/loans/${id}/reject`, { method: 'PATCH', body: { reason } }),
-  disburse: (id: string) =>
-    request<any>(`/loans/${id}/disburse`, { method: 'POST' }),
-  repay: (id: string, data: { amount: number; paymentMethod?: string; reference?: string; notes?: string }) =>
+  disburse: (id: string, data?: { idempotencyKey?: string }) =>
+    request<any>(`/loans/${id}/disburse`, { method: 'POST', body: data || {} }),
+  repay: (id: string, data: { amount: number; paymentMethod?: string; reference?: string; notes?: string; idempotencyKey?: string }) =>
     request<any>(`/loans/${id}/repay`, { method: 'POST', body: data }),
   getSchedule: (id: string) =>
     request<any[]>(`/loans/${id}/schedule`),
@@ -147,4 +147,11 @@ export const reportsApi = {
     request<any>('/reports/overview'),
   outstanding: () =>
     request<any>('/reports/outstanding'),
+}
+
+// ── Financial Integrity API ──
+
+export const financialApi = {
+  verify: (params?: { accountId?: string; loanId?: string }) =>
+    request<any>('/financial/verify', { params }),
 }

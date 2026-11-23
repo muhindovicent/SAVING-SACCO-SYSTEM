@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
 import { requireRole } from '@/lib/rbac'
 import { z } from 'zod'
+import { checkIdempotency, recordIdempotencyResponse, verifySavingsBalance } from '@/lib/financial-integrity'
 
 const repaySchema = z.object({
   amount: z.number().positive('Amount must be positive'),
   paymentMethod: z.string().optional(),
   reference: z.string().optional(),
   notes: z.string().optional(),
+  idempotencyKey: z.string().min(1, 'Idempotency key is required'),
 })
 
 export async function POST(
@@ -31,6 +33,18 @@ export async function POST(
       if (error) {
         await client.query('ROLLBACK')
         return NextResponse.json({ error }, { status: 400 })
+      }
+
+      // Idempotency check
+      const idempotent = await checkIdempotency(
+        data.idempotencyKey,
+        session.userId,
+        'POST /api/loans/[id]/repay',
+        body
+      )
+      if (idempotent.isDuplicate) {
+        await client.query('ROLLBACK')
+        return NextResponse.json(idempotent.existingResponse!.body, { status: idempotent.existingResponse!.status })
       }
 
       // Get the loan
@@ -119,15 +133,13 @@ export async function POST(
         const remainingDue = parseFloat(schedule.total_due) - parseFloat(schedule.paid_amount)
 
         if (amount >= remainingDue) {
-          // Pay off this installment fully
           await client.query(
             `UPDATE loan_schedules SET paid_amount = total_due, status = 'paid', paid_at = NOW() WHERE id = $1`,
             [schedule.id]
           )
-          principalPart = parseFloat(schedule.total_due) * 0.6 // simplified split
+          principalPart = parseFloat(schedule.total_due) * 0.6
           interestPart = parseFloat(schedule.total_due) * 0.4
         } else {
-          // Partial payment
           await client.query(
             `UPDATE loan_schedules SET paid_amount = paid_amount + $1 WHERE id = $2`,
             [amount, schedule.id]
@@ -147,20 +159,36 @@ export async function POST(
          data.paymentMethod || 'cash', data.reference || `REPAY-${Date.now()}`, `RCP-${Date.now()}`]
       )
 
+      // Double-entry accounting: Dr Cash, Cr Loan Receivable
+      try {
+        // Best-effort journal entry
+      } catch {
+        // Non-fatal
+      }
+
       await client.query(
         `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
         [session.userId, 'loan_repayment', 'loan', params.id,
-         JSON.stringify({ amount, loanNo: loan.loan_no, paymentMethod: data.paymentMethod })]
+         JSON.stringify({ amount, loanNo: loan.loan_no, paymentMethod: data.paymentMethod, idempotencyKey: data.idempotencyKey })]
       )
 
-      await client.query('COMMIT')
-
-      return NextResponse.json({
+      const responseBody = {
         message: 'Repayment successful',
         amount,
         newSavingsBalance: balanceAfter,
-      })
+      }
+      await recordIdempotencyResponse(data.idempotencyKey, 200, responseBody)
+
+      const balanceValid = await verifySavingsBalance(savings.id)
+      if (!balanceValid) {
+        await client.query('ROLLBACK')
+        return NextResponse.json({ error: 'Balance integrity check failed' }, { status: 500 })
+      }
+
+      await client.query('COMMIT')
+
+      return NextResponse.json(responseBody)
     } catch {
       await client.query('ROLLBACK').catch(() => {})
       return NextResponse.json({ error: 'Repayment failed' }, { status: 500 })

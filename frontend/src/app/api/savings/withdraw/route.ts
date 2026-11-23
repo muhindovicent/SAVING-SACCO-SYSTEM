@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
 import { requireRole } from '@/lib/rbac'
 import { z } from 'zod'
+import { checkIdempotency, recordIdempotencyResponse, verifySavingsBalance } from '@/lib/financial-integrity'
 
 const withdrawSchema = z.object({
   accountId: z.string().uuid('Invalid account ID'),
   amount: z.number().positive('Amount must be positive'),
   reference: z.string().min(1, 'Reference is required').optional(),
   description: z.string().optional(),
+  idempotencyKey: z.string().min(1, 'Idempotency key is required'),
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -28,6 +30,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (error) {
         await client.query('ROLLBACK')
         return NextResponse.json({ error }, { status: 400 })
+      }
+
+      // Idempotency check
+      const idempotent = await checkIdempotency(
+        data.idempotencyKey,
+        session.userId,
+        'POST /api/savings/withdraw',
+        body
+      )
+      if (idempotent.isDuplicate) {
+        await client.query('ROLLBACK')
+        return NextResponse.json(idempotent.existingResponse!.body, { status: idempotent.existingResponse!.status })
       }
 
       const accountResult = await client.query(
@@ -88,16 +102,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
         [session.userId, 'savings_withdrawal', 'savings_account', data.accountId,
-         JSON.stringify({ amount, balanceBefore, balanceAfter, reference })]
+         JSON.stringify({ amount, balanceBefore, balanceAfter, reference, idempotencyKey: data.idempotencyKey })]
       )
 
-      await client.query('COMMIT')
-
-      return NextResponse.json({
+      const responseBody = {
         message: 'Withdrawal successful',
         transaction: txnResult.rows[0],
         newBalance: balanceAfter,
-      }, { status: 201 })
+      }
+      await recordIdempotencyResponse(data.idempotencyKey, 201, responseBody)
+
+      const balanceValid = await verifySavingsBalance(data.accountId)
+      if (!balanceValid) {
+        await client.query('ROLLBACK')
+        return NextResponse.json({ error: 'Balance integrity check failed' }, { status: 500 })
+      }
+
+      await client.query('COMMIT')
+
+      return NextResponse.json(responseBody, { status: 201 })
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {})
       return NextResponse.json({ error: 'Withdrawal failed' }, { status: 500 })

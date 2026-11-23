@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireRole } from '@/lib/rbac'
 import { z } from 'zod'
+import { checkIdempotency, recordIdempotencyResponse } from '@/lib/financial-integrity'
 
 const applySchema = z.object({
   loanType: z.string().min(1, 'Loan type is required'),
   amount: z.number().positive('Amount must be positive'),
   purpose: z.string().optional(),
   durationMonths: z.number().int().positive('Duration must be positive'),
+  idempotencyKey: z.string().min(1, 'Idempotency key is required'),
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -26,6 +28,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error }, { status: 400 })
       }
 
+      // Idempotency check
+      const idempotent = await checkIdempotency(
+        data.idempotencyKey,
+        session.userId,
+        'POST /api/loans/apply',
+        body
+      )
+      if (idempotent.isDuplicate) {
+        return NextResponse.json(idempotent.existingResponse!.body, { status: idempotent.existingResponse!.status })
+      }
+
       // Resolve member from user
       const memberResult = await query(
         `SELECT id FROM members WHERE user_id = $1 AND is_deleted = false`,
@@ -37,20 +50,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const memberId = memberResult.rows[0].id
 
       // Generate application number
-      const appNoResult = await query(
-        `SELECT COUNT(*) FROM loan_applications`
-      )
+      const appNoResult = await query(`SELECT COUNT(*) FROM loan_applications`)
       const appCount = parseInt(appNoResult.rows[0].count, 10) + 1
       const applicationNo = `LA-${String(appCount).padStart(4, '0')}`
 
       const result = await query(
         `INSERT INTO loan_applications (member_id, loan_type, amount, purpose, duration_months, status)
          VALUES ($1, $2, $3, $4, $5, 'pending')
-         RETURNING id, member_id, loan_type, amount, purpose, duration_months, status, application_no, created_at`,
+         RETURNING id, member_id, loan_type, amount, purpose, duration_months, status, created_at`,
         [memberId, data.loanType, data.amount, data.purpose || null, data.durationMonths]
       )
 
-      // Update application number
       await query(
         `UPDATE loan_applications SET application_no = $1 WHERE id = $2`,
         [applicationNo, result.rows[0].id]
@@ -60,13 +70,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
         [session.userId, 'loan_application', 'loan_application', result.rows[0].id,
-         JSON.stringify({ loanType: data.loanType, amount: data.amount, durationMonths: data.durationMonths })]
+         JSON.stringify({ loanType: data.loanType, amount: data.amount, durationMonths: data.durationMonths, idempotencyKey: data.idempotencyKey })]
       )
 
-      return NextResponse.json({
+      const responseBody = {
         message: 'Loan application submitted',
         application: { ...result.rows[0], applicationNo },
-      }, { status: 201 })
+      }
+      await recordIdempotencyResponse(data.idempotencyKey, 201, responseBody)
+
+      return NextResponse.json(responseBody, { status: 201 })
     } catch {
       return NextResponse.json({ error: 'Failed to submit loan application' }, { status: 500 })
     }

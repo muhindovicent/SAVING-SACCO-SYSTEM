@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
 import { requireRole } from '@/lib/rbac'
 import { z } from 'zod'
+import { checkIdempotency, recordIdempotencyResponse, verifySavingsBalance } from '@/lib/financial-integrity'
 
 const depositSchema = z.object({
   accountId: z.string().uuid('Invalid account ID'),
   amount: z.number().positive('Amount must be positive'),
   reference: z.string().min(1, 'Reference is required').optional(),
   description: z.string().optional(),
+  idempotencyKey: z.string().min(1, 'Idempotency key is required'),
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -30,14 +32,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error }, { status: 400 })
       }
 
-      // Members can only deposit to their own accounts
-      let accountQuery = `
-        SELECT sa.id, sa.member_id, sa.balance, sa.status
-        FROM savings_accounts sa
-        WHERE sa.id = $1 AND sa.is_deleted = false
-        FOR UPDATE
-      `
-      const accountResult = await client.query(accountQuery, [data.accountId])
+      // Idempotency check
+      const idempotent = await checkIdempotency(
+        data.idempotencyKey,
+        session.userId,
+        'POST /api/savings/deposit',
+        body
+      )
+      if (idempotent.isDuplicate) {
+        await client.query('ROLLBACK')
+        return NextResponse.json(idempotent.existingResponse!.body, { status: idempotent.existingResponse!.status })
+      }
+
+      const accountResult = await client.query(
+        `SELECT sa.id, sa.member_id, sa.balance, sa.status
+         FROM savings_accounts sa
+         WHERE sa.id = $1 AND sa.is_deleted = false
+         FOR UPDATE`,
+        [data.accountId]
+      )
 
       if (accountResult.rows.length === 0) {
         await client.query('ROLLBACK')
@@ -82,21 +95,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         [data.accountId, account.member_id, amount, balanceBefore, balanceAfter, reference, data.description || null]
       )
 
-      // Record audit log
+      // Audit log
       await client.query(
         `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
         [session.userId, 'savings_deposit', 'savings_account', data.accountId,
-         JSON.stringify({ amount, balanceBefore, balanceAfter, reference })]
+         JSON.stringify({ amount, balanceBefore, balanceAfter, reference, idempotencyKey: data.idempotencyKey })]
       )
 
-      await client.query('COMMIT')
-
-      return NextResponse.json({
+      // Record idempotency response before commit
+      const responseBody = {
         message: 'Deposit successful',
         transaction: txnResult.rows[0],
         newBalance: balanceAfter,
-      }, { status: 201 })
+      }
+      await recordIdempotencyResponse(data.idempotencyKey, 201, responseBody)
+
+      // Verify balance integrity
+      const balanceValid = await verifySavingsBalance(data.accountId)
+      if (!balanceValid) {
+        await client.query('ROLLBACK')
+        return NextResponse.json({ error: 'Balance integrity check failed' }, { status: 500 })
+      }
+
+      await client.query('COMMIT')
+
+      return NextResponse.json(responseBody, { status: 201 })
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {})
       return NextResponse.json({ error: 'Deposit failed' }, { status: 500 })

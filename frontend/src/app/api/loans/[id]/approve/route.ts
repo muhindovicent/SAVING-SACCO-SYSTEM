@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
 import { requireRole } from '@/lib/rbac'
 import { z } from 'zod'
+import { checkIdempotency, recordIdempotencyResponse } from '@/lib/financial-integrity'
 
 const approveSchema = z.object({
   interestRate: z.number().min(0, 'Interest rate must be non-negative').optional(),
+  idempotencyKey: z.string().min(1, 'Idempotency key is required'),
 })
 
 export async function PATCH(
@@ -17,7 +19,19 @@ export async function PATCH(
       await client.query('BEGIN')
 
       const body = await request.json()
-      const { interestRate } = approveSchema.parse(body)
+      const { interestRate, idempotencyKey } = approveSchema.parse(body)
+
+      // Idempotency check
+      const idempotent = await checkIdempotency(
+        idempotencyKey,
+        session.userId,
+        'PATCH /api/loans/[id]/approve',
+        body
+      )
+      if (idempotent.isDuplicate) {
+        await client.query('ROLLBACK')
+        return NextResponse.json(idempotent.existingResponse!.body, { status: idempotent.existingResponse!.status })
+      }
 
       // Get the application
       const appResult = await client.query(
@@ -87,18 +101,21 @@ export async function PATCH(
         `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW())`,
         [session.userId, 'loan_approved', 'loan', loanId,
-         JSON.stringify({ loanNo, principal, rate, duration, totalInterest, totalAmount })]
+         JSON.stringify({ loanNo, principal, rate, duration, totalInterest, totalAmount, idempotencyKey })]
       )
 
-      await client.query('COMMIT')
-
-      return NextResponse.json({
+      const responseBody = {
         message: 'Loan approved',
         loan: loanResult.rows[0],
         totalInterest,
         totalAmount,
         monthlyInstallment,
-      })
+      }
+      await recordIdempotencyResponse(idempotencyKey, 200, responseBody)
+
+      await client.query('COMMIT')
+
+      return NextResponse.json(responseBody)
     } catch {
       await client.query('ROLLBACK').catch(() => {})
       return NextResponse.json({ error: 'Failed to approve loan' }, { status: 500 })
